@@ -490,10 +490,11 @@ def chat_system():
 
 
 if __name__ == "__main__":
-    #hide_console()
+    hide_console()
     loading_screen()
     show_console()
     key_system()
+    time.sleep(1)
     hide_console()
     chat_system()
 

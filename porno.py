@@ -179,6 +179,7 @@ def key_system():
         response = requests.post(url, json=data)
     except requests.exceptions.RequestException:
         print("\x1b[31m[!] Sunucuya bağlanılamadı.\x1b[0m")
+        time.sleep(1)
         sys.exit(1)
 
     if response.status_code == 200:
@@ -192,17 +193,20 @@ def key_system():
         print("\x1b[32m[-] Kalan süre:", remaining_days, "gün\n")
 
         print("\x1b[36m[~] :) \x1b[0m")
-
+        time.sleep(1)
     elif response.status_code == 403:
         print(f"\x1b[31m[!] {response.json().get('message', 'Erişim engellendi.')}\x1b[0m")
+        time.sleep(1)
         sys.exit(1)
 
     elif response.status_code == 401:
         print(f"\x1b[31m[!] Geçersiz anahtar.\x1b[0m")
+        time.sleep(1)
         sys.exit(1)
 
     else:
         print(f"\x1b[31m[!] Beklenmeyen hata: {response.status_code}\x1b[0m")
+        time.sleep(1)
         sys.exit(1)
 
 settings_file = "settings.txt"

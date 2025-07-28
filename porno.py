@@ -18,7 +18,7 @@ from tkinter import simpledialog
 
 
 CURRENT_VERSION = "1.1"  # Şu anki sürüm
-# 50 mesaj düzeltildi
+# 50 mesaj güncelledi / komutlar sayılmaz olarak ayarlandı
 
 def hide_console():
     if sys.platform == "win32":
@@ -375,7 +375,7 @@ def message_loop(delay, loops):
             message_counter += 1
 
             # Eğer 50 mesajda biryse bekle
-            if message_counter > 0 and message_counter % 50 == 0:
+            if message_counter > 0 and message_counter % 50 == 0 and not msg.startswith("/"):
                 log_message("50 mesaj gönderildi. 60 saniye bekleniyor...")
                 for i in range(60):
                     if not running:

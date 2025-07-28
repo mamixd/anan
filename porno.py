@@ -18,7 +18,7 @@ from tkinter import simpledialog
 
 
 CURRENT_VERSION = "1.1"  # Şu anki sürüm
-
+# 50 mesaj düzeltildi
 
 def hide_console():
     if sys.platform == "win32":
@@ -354,7 +354,6 @@ def log_message(text):
         print(f"Log mesajı yazılamadı: {e}")
     with open("chat_log.txt", "a", encoding="utf-8") as f:
         f.write(full_text)
-
 def message_loop(delay, loops):
     global running
     loop_counter = 0
@@ -372,10 +371,19 @@ def message_loop(delay, loops):
             time.sleep(0.05)
             pyautogui.press('enter')
             log_message(f"Mesaj gönderildi: {upper_msg}")
+            
             message_counter += 1
-            if message_counter % 50 == 0:
-                log_message("50 mesaj gönderildi, 60 saniye bekleniyor...")
-                time.sleep(60)
+
+            # Eğer 50 mesajda biryse bekle
+            if message_counter > 0 and message_counter % 50 == 0:
+                log_message("50 mesaj gönderildi. 60 saniye bekleniyor...")
+                for i in range(60):
+                    if not running:
+                        break
+                    time.sleep(1)
+
+            if not running:
+                break
             time.sleep(delay)
         loop_counter += 1
     running = False

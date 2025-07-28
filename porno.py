@@ -12,6 +12,10 @@ from pymongo import MongoClient
 import pyautogui
 import keyboard
 import threading
+import customtkinter as ctk
+import tkinter.messagebox as messagebox
+from tkinter import simpledialog
+
 
 CURRENT_VERSION = "1.1"  # Şu anki sürüm
 
@@ -242,8 +246,9 @@ def save_settings():
 
 def toggle_theme():
     settings["theme"] = "dark" if settings["theme"] == "light" else "light"
-    apply_theme()
+    ctk.set_appearance_mode(settings["theme"])
     save_settings()
+
 
 def apply_theme():
     theme = settings["theme"]
@@ -282,10 +287,12 @@ def add_message():
     msg = message_entry.get()
     if msg.strip():
         messages.append(msg)
-        listbox.insert(tk.END, f"{len(messages)} - {msg}")
         message_entry.delete(0, tk.END)
+        update_message_frame()
+        log_message(f"Mesaj eklendi: {msg}")
     else:
         messagebox.showwarning("Uyarı", "Mesaj boş olamaz!")
+
 
 def save_messages():
     try:
@@ -303,10 +310,9 @@ def load_messages():
         return
     with open("mesajlar.txt", "r", encoding="utf-8") as f:
         messages = f.read().splitlines()
-    listbox.delete(0, tk.END)
-    for idx, msg in enumerate(messages):
-        listbox.insert(tk.END, f"{idx + 1} - {msg}")
+    update_message_frame()
     messagebox.showinfo("Yüklendi", "'mesajlar.txt' yüklendi.")
+
 
 def start_bot():
     global running
@@ -339,10 +345,13 @@ def stop_bot():
 def log_message(text):
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     full_text = f"[{timestamp}] {text}\n"
-    log_text.config(state='normal')
-    log_text.insert(tk.END, full_text)
-    log_text.see(tk.END)
-    log_text.config(state='disabled')
+    try:
+        log_text.configure(state='normal')
+        log_text.insert("end", full_text)
+        log_text.see("end")
+        log_text.configure(state='disabled')
+    except Exception as e:
+        print(f"Log mesajı yazılamadı: {e}")
     with open("chat_log.txt", "a", encoding="utf-8") as f:
         f.write(full_text)
 
@@ -399,94 +408,104 @@ def restart_hotkey_listener():
         log_message(f"Kısayol hatası: {e}")
 
 def delete_message():
-    selected = listbox.curselection()
-    if not selected:
-        messagebox.showwarning("Uyarı", "Silmek için bir mesaj seçmelisin.")
+    index = simpledialog.askinteger("Mesaj Sil", "Silmek istediğin mesajın numarasını gir (1'den başlar):")
+    if index is None:
         return
+    index -= 1
+    if 0 <= index < len(messages):
+        mesaj = messages.pop(index)
+        update_message_frame()
+        log_message(f"Mesaj silindi: {mesaj}")
+    else:
+        messagebox.showwarning("Uyarı", "Geçersiz mesaj numarası.")
 
-    index = selected[0]
-    mesaj = messages.pop(index)
-    listbox.delete(index)
-    log_message(f"Mesaj silindi: {mesaj}")
+
+def update_message_frame():
+    for widget in message_frame.winfo_children():
+        widget.destroy()
+    for idx, msg in enumerate(messages):
+        label = ctk.CTkLabel(message_frame, text=f"{idx+1} - {msg}", anchor="w", font=("Arial", 12))
+        label.grid(row=idx, column=0, sticky="w", padx=5, pady=1)
 
 
 def chat_system():
     load_settings()
-    global root, message_entry, listbox, delay_entry, loop_entry
-    global start_hotkey_entry, stop_hotkey_entry, log_text
+    global message_entry, delay_entry, loop_entry
+    global start_hotkey_entry, stop_hotkey_entry
+    global message_frame, log_text
 
-    root = tk.Tk()
-    root.title("Craftrise Oto Chat Bot")
-    root.geometry("550x700")
-    root.resizable(False, False)
+    ctk.set_appearance_mode(settings["theme"])
+    ctk.set_default_color_theme("green")
 
-    tk.Label(root, text="Mesaj Ekle:").pack(pady=(10, 0))
-    message_entry = tk.Entry(root, width=50)
-    message_entry.pack(pady=5)
+    app = ctk.CTk()
+    app.title("Craftrise Oto Chat Bot")
+    app.geometry("620x1024")
 
-    btn_frame = tk.Frame(root)
-    btn_frame.pack(pady=5)
+    # Mesaj giriş alanı
+    ctk.CTkLabel(app, text="Mesaj Ekle:").pack(pady=(15, 0))
+    message_entry = ctk.CTkEntry(app, width=400)
+    message_entry.pack(pady=10)
 
-    tk.Button(btn_frame, text="➕ Ekle", width=10, command=add_message).grid(row=0, column=0, padx=5)
-    tk.Button(btn_frame, text="💾 Kaydet", width=10, command=save_messages).grid(row=0, column=1, padx=5)
-    tk.Button(btn_frame, text="📂 Yükle", width=10, command=load_messages).grid(row=0, column=2, padx=5)
-    tk.Button(btn_frame, text="🗑 Sil", width=10, command=delete_message).grid(row=0, column=3, padx=5)
+    # Butonlar
+    btn_frame = ctk.CTkFrame(app)
+    btn_frame.pack(pady=10)
 
-    listbox = tk.Listbox(root, width=60, height=10)
-    listbox.pack(pady=5)
+    ctk.CTkButton(btn_frame, text="➕ Ekle", command=add_message).grid(row=0, column=0, padx=5)
+    ctk.CTkButton(btn_frame, text="💾 Kaydet", command=save_messages).grid(row=0, column=1, padx=5)
+    ctk.CTkButton(btn_frame, text="📂 Yükle", command=load_messages).grid(row=0, column=2, padx=5)
+    ctk.CTkButton(btn_frame, text="🗑 Sil", command=delete_message).grid(row=0, column=3, padx=5)
 
-    tk.Label(root, text="Mesaj Gecikmesi (saniye):").pack()
-    delay_entry = tk.Entry(root, width=10)
+    # Mesaj listesi (CTkScrollableFrame + Label)
+    ctk.CTkLabel(app, text="Mesaj Listesi:").pack()
+    message_frame = ctk.CTkScrollableFrame(app, width=540, height=50)
+    message_frame.pack(pady=5)
+
+    # Gecikme ve döngü
+    ctk.CTkLabel(app, text="Mesaj Gecikmesi (saniye):").pack()
+    delay_entry = ctk.CTkEntry(app, width=100)
     delay_entry.insert(0, str(settings["delay"]))
     delay_entry.pack(pady=3)
 
-    tk.Label(root, text="Döngü Sayısı (0 = sınırsız):").pack()
-    loop_entry = tk.Entry(root, width=10)
+    ctk.CTkLabel(app, text="Döngü Sayısı (0 = sınırsız):").pack()
+    loop_entry = ctk.CTkEntry(app, width=100)
     loop_entry.insert(0, str(settings["loops"]))
     loop_entry.pack(pady=3)
 
-    tk.Label(root, text="Kısayollar (Örn: f10, f9, ctrl+alt+k)").pack(pady=(10, 0))
-    hotkey_frame = tk.Frame(root)
+    # Kısayollar
+    ctk.CTkLabel(app, text="Kısayollar (örn: f10, f9, ctrl+alt+k)").pack(pady=(10, 0))
+    hotkey_frame = ctk.CTkFrame(app)
     hotkey_frame.pack(pady=5)
 
-    tk.Label(hotkey_frame, text="Başlat:").grid(row=0, column=0, padx=5)
-    start_hotkey_entry = tk.Entry(hotkey_frame, width=15)
+    ctk.CTkLabel(hotkey_frame, text="Başlat:").grid(row=0, column=0, padx=5)
+    start_hotkey_entry = ctk.CTkEntry(hotkey_frame, width=100)
     start_hotkey_entry.insert(0, settings["start_hotkey"])
-    start_hotkey_entry.grid(row=0, column=1)
+    start_hotkey_entry.grid(row=0, column=1, padx=5)
 
-    tk.Label(hotkey_frame, text="Durdur:").grid(row=0, column=2, padx=5)
-    stop_hotkey_entry = tk.Entry(hotkey_frame, width=15)
+    ctk.CTkLabel(hotkey_frame, text="Durdur:").grid(row=0, column=2, padx=5)
+    stop_hotkey_entry = ctk.CTkEntry(hotkey_frame, width=100)
     stop_hotkey_entry.insert(0, settings["stop_hotkey"])
-    stop_hotkey_entry.grid(row=0, column=3)
+    stop_hotkey_entry.grid(row=0, column=3, padx=5)
 
-    tk.Button(root, text="💡 Kısayolları Kaydet", command=update_hotkeys).pack(pady=10)
+    ctk.CTkButton(app, text="💡 Kısayolları Kaydet", command=update_hotkeys).pack(pady=10)
 
-    control_frame = tk.Frame(root)
+    # Başlat/Durdur butonları
+    control_frame = ctk.CTkFrame(app)
     control_frame.pack(pady=10)
 
-    tk.Button(control_frame, text="▶ Başlat", bg="#a5d6a7", width=15, command=start_bot).grid(row=0, column=0, padx=10)
-    tk.Button(control_frame, text="■ Durdur", bg="#ef9a9a", width=15, command=stop_bot).grid(row=0, column=1, padx=10)
+    ctk.CTkButton(control_frame, text="▶ Başlat", fg_color="#4caf50", hover_color="#388e3c", command=start_bot).grid(row=0, column=0, padx=10)
+    ctk.CTkButton(control_frame, text="■ Durdur", fg_color="#e57373", hover_color="#c62828", command=stop_bot).grid(row=0, column=1, padx=10)
 
-    tk.Button(root, text="🌗 Tema Değiştir", width=20, command=toggle_theme).pack(pady=(0, 10))
+    # Tema değiştir
+    ctk.CTkButton(app, text="🌗 Tema Değiştir", command=toggle_theme).pack(pady=(5, 10))
 
-    tk.Label(root, text="Log:").pack()
-    log_text = scrolledtext.ScrolledText(root, width=60, height=10, state='disabled')
+    # Log kutusu
+    ctk.CTkLabel(app, text="Log:").pack(pady=(10, 0))
+    log_text = ctk.CTkTextbox(app, width=580, height=250, state='disabled')
     log_text.pack(pady=5)
 
-    def update_delay_loop(event=None):
-        try:
-            settings["delay"] = float(delay_entry.get())
-            settings["loops"] = int(loop_entry.get())
-            save_settings()
-        except ValueError:
-            pass
-
-    delay_entry.bind("<KeyRelease>", update_delay_loop)
-    loop_entry.bind("<KeyRelease>", update_delay_loop)
-
-    apply_theme()
+    update_message_frame()
     restart_hotkey_listener()
-    root.mainloop()
+    app.mainloop()
 
 
 if __name__ == "__main__":
